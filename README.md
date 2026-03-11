@@ -1,6 +1,8 @@
 # investment-agent-skills
 
-Cursor Agent Skills for personal investment management. These skills enable an AI agent in [Cursor IDE](https://cursor.com) to collect investment account data from brokerage platforms and generate a comprehensive cross-platform portfolio analysis report — all without leaving the editor.
+AI agent skills for personal investment management. Each skill is a structured instruction file that tells an AI agent how to collect investment account data from brokerage platforms and generate a comprehensive cross-platform portfolio analysis report — all within your editor.
+
+> **Implementation note**: Skills are currently implemented in [Cursor](https://cursor.com)'s agent skill format. The underlying prompts and data flow can be adapted to other AI coding tools (Windsurf, GitHub Copilot Workspace, etc.) with minimal changes.
 
 > **Data privacy**: This repository contains only skill logic (AI instructions). All personal data — account snapshots, holdings, investment preferences — lives in a separate private workspace and is never part of this repo.
 
@@ -8,7 +10,7 @@ Cursor Agent Skills for personal investment management. These skills enable an A
 
 ## How it works
 
-Skills are structured instruction files that tell the Cursor AI agent what to do step by step. This repo implements a two-layer design:
+Each skill is a `SKILL.md` file — a structured prompt that tells an AI agent what to do step by step. This repo implements a two-layer design:
 
 ```
 snapshot/          ← Layer 1: Platform-specific data collection
@@ -63,9 +65,9 @@ Key capabilities:
 
 ## Prerequisites
 
-- [Cursor IDE](https://cursor.com) with Agent mode enabled
+- An AI coding tool with agent/composer mode and browser control (e.g. [Cursor](https://cursor.com), Windsurf, etc.)
 - A private workspace with the directory structure described below
-- **For `analysis`**: akshare MCP configured in the workspace's `.cursor/mcp.json`
+- **For `analysis`**: [akshare MCP](https://github.com/akfamily/akshare) configured in your workspace
 - **For `snapshot/tiantianjijin`**: a logged-in Tiantian Fund browser session
 
 ---
@@ -78,9 +80,9 @@ Key capabilities:
 git clone https://github.com/RayJiang4S/investment-agent-skills.git
 ```
 
-### 2. Link skills into your Cursor workspace
+### 2. Load skills into your AI tool
 
-Cursor loads skills from `<workspace>/.cursor/skills/`. Create symlinks pointing to this repo (add `.cursor/skills/` to your workspace `.gitignore` — these are local environment links, not source files):
+**Cursor**: Skills are auto-loaded from `<workspace>/.cursor/skills/`. Create symlinks pointing to this repo (add `.cursor/skills/` to `.gitignore` — these are local environment links, not source files):
 
 ```bash
 cd /path/to/your/workspace
@@ -93,6 +95,8 @@ ln -s /path/to/investment-agent-skills/analysis \
 
 echo '.cursor/skills/' >> .gitignore
 ```
+
+**Other tools**: Copy or reference the `SKILL.md` files as system prompts or custom instructions in your AI tool of choice. The prompts are self-contained and do not depend on Cursor-specific APIs.
 
 ### 3. Set up your private workspace structure
 
@@ -114,7 +118,7 @@ Create `investment-preferences.md` with your personal settings (risk tolerance, 
 
 ### 4. Configure akshare MCP (for `analysis`)
 
-Add the akshare MCP server to your workspace's `.cursor/mcp.json`. Refer to the [akshare MCP documentation](https://github.com/akfamily/akshare) for setup instructions.
+Add the akshare MCP server to your workspace. Refer to the [akshare MCP documentation](https://github.com/akfamily/akshare) for setup instructions. For Cursor, this goes in `.cursor/mcp.json`.
 
 ---
 
