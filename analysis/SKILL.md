@@ -1,9 +1,9 @@
 ---
-name: tiantianjijin-portfolio-analysis
-description: 基于已有快照分析天天基金账户资产，结合 akshare MCP 的市场数据，生成投资配置评估报告。当用户提到查看基金持仓、资产分析、投资配置评估、天天基金账户、收益情况、组合分析、帮我看看基金、出报告时使用。Use when user asks to check fund holdings, analyze portfolio allocation, review investment returns, or evaluate asset distribution on Tiantian Fund platform.
+name: portfolio-analysis
+description: 综合所有投资平台的快照数据，结合 akshare MCP 市场数据，生成跨平台家庭投资组合分析报告。当用户提到查看基金持仓、资产分析、投资配置评估、收益情况、组合分析、帮我看看基金、出报告时使用。Use when user asks to check fund holdings, analyze portfolio allocation, review investment returns, or evaluate overall asset distribution across all platforms.
 ---
 
-# 天天基金投资配置分析 Skill
+# 家庭投资组合分析 Skill
 
 ## 总体流程
 
@@ -23,7 +23,7 @@ Step 2: 全球市场数据查询（WebSearch）—— 含技术过滤确认
 Step 3: 备份当前报告 → 就地更新报告（迭代，不新建）
 ```
 
-> **无需打开浏览器**。账户数据来自本地快照文件，若快照不存在，提示用户先运行「天天基金账户数据采集」skill。
+> **无需打开浏览器**。账户数据来自各平台本地快照文件。若某平台快照不存在，提示用户先运行对应平台的数据采集 skill（如「天天基金账户数据采集」）。
 
 ---
 
@@ -48,25 +48,30 @@ Step 3: 备份当前报告 → 就地更新报告（迭代，不新建）
 
 若文件不存在，提示用户创建，并继续分析（使用通用原则）。
 
-### 0.2 定位快照文件
+### 0.2 发现并读取所有平台快照
 
-用 Read 工具直接读取 `投资理财/platforms/天天基金/snapshot.json`。
+用 Glob 列出 `投资理财/platforms/*/snapshot.json`，获取所有已有快照的平台列表。
 
-若文件不存在，停止并告知用户：
+对每个平台，用 Read 工具读取对应的 `snapshot.json`：
 
-```
-⚠️ 未找到快照文件。请先告诉我「采集数据」，让我打开天天基金网站采集最新账户数据，再来分析。
-```
+| 平台 | 快照路径 | 未找到时 |
+|-----|---------|---------|
+| 天天基金 | `投资理财/platforms/天天基金/snapshot.json` | 提示运行「天天基金账户数据采集」skill |
+| 东方财富证券 | `投资理财/platforms/东方财富证券/snapshot.json` | 提示运行对应采集 skill |
+| （其他平台） | `投资理财/platforms/<平台名>/snapshot.json` | 同上 |
+
+- **至少一个平台有快照**：继续分析，在报告 header 中注明哪些平台已采集、哪些缺失
+- **所有平台均无快照**：停止并告知用户先采集数据
 
 ### 0.3 读取并解析快照
 
-用 Read 工具读取该 JSON 文件，提取以下信息：
+对每个平台的快照，提取以下信息并合并为统一的家庭资产视图：
 
 - `snapshot_time`：快照生成时间（ISO 8601，北京时间 +08:00）
 - `accounts`：各账户的总览、持仓明细、定投计划、自选基金
-- 已采集账户列表（`collected: true` 的账户）
+- 已采集账户列表
 
-**快照数据结构说明：**
+**快照数据结构说明（以天天基金格式为参考）：**
 
 | 字段 | 说明 |
 |-----|------|
@@ -77,7 +82,7 @@ Step 3: 备份当前报告 → 就地更新报告（迭代，不新建）
 
 ### 0.4 计算数据时效
 
-将 `snapshot_time` 与当前时间比较，计算时间差，在报告 header 中注明：
+对每个平台分别计算 `snapshot_time` 与当前时间的时间差，在报告 header 中逐平台注明：
 
 | 时间差 | 提示文案 |
 |-------|---------|
@@ -362,11 +367,11 @@ cp "投资理财/portfolio.md" \
 报告 header 须包含风险速览一行（从量化风险摘要提炼）：
 
 ```markdown
-> 账户数据：快照 `snapshots/YYYY-MM-DD_HH-MM.json`，生成于 **X 小时前 / X 天前**
+> 平台数据：天天基金 ✅（X 小时前）/ 东方财富证券 ❌（未采集）/ …
 > 采集账户：（账户1）✅ / （账户2）✅ / （账户3）❌（未采集）
 > 市场数据：分析时实时获取（akshare MCP + Web Search）
 > 量化计算：`quant_calc.py` 脚本精确计算（非手算）
-> 上次分析：YYYY-MM-DD（距今 X 天），备份于 `backups/reports/`
+> 上次分析：YYYY-MM-DD（距今 X 天），备份于 `投资理财/backups/`
 > 风险速览：集中度 🔴 | N_eff=X.XX（预警线3.0）| 情景最大压力 S3=-XX万（-X.X%总资产）| 美股 🟡 | 汇率 🟡 | 地缘 🟡 | 情绪 🟢
 ```
 
@@ -395,7 +400,7 @@ cp "投资理财/portfolio.md" \
 - **所有大仓位盈利持仓**必须在「继续持有」栏中列出，附持有逻辑（一句话）和当前策略权重，不得跳过
 - **需要决策的持仓**触发条件：① 逻辑根本改变 ② 单账户占比>70% ③ 亏损且主题逻辑破坏 ④ 策略权重超目标+10个百分点
 - 持仓收益数据来自快照 `holdings[].holding_income` 和 `holding_income_rate`
-- 在「继续持有」表中增加「当前权重」列，来自 Step 0.5.6 的计算结果
+- 在「继续持有」表中增加「当前权重」列，来自 Step 0.6 的计算结果
 
 ### 1.4 自选基金行动（分析要点）
 
